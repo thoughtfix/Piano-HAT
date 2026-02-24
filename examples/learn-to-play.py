@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import signal
@@ -8,7 +8,7 @@ from sys import exit
 try:
     import pygame
 except ImportError:
-    exit("This script requires the pygame module\nInstall with: sudo pip install pygame")
+    exit("This script requires the pygame module\nInstall with: pip3 install pygame")
 
 import pianohat
 

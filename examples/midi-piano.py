@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import glob
 import os
@@ -11,12 +11,12 @@ try:
     import midi
     import midi.sequencer
 except ImportError:
-    exit("This script requires the midi module\nInstall with: sudo pip install midi")
+    exit("This script requires the midi module\nInstall with: pip3 install python-midi")
 
 try:
     import pygame
 except ImportError:
-    exit("This script requires the pygame module\nInstall with: sudo pip install pygame")
+    exit("This script requires the pygame module\nInstall with: pip3 install pygame")
 
 import pianohat
 

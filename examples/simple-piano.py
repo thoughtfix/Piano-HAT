@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import glob
 import os
@@ -9,7 +9,7 @@ from sys import exit
 try:
     import pygame
 except ImportError:
-    exit("This script requires the pygame module\nInstall with: sudo pip install pygame")
+    exit("This script requires the pygame module\nInstall with: pip3 install pygame")
 
 import pianohat
 
@@ -57,7 +57,7 @@ def load_samples(patch):
     for filetype in FILETYPES:
         files.extend(glob.glob(os.path.join(patch, filetype)))
     files.sort(key=natural_sort_key)
-    octaves = len(files) / 12
+    octaves = len(files) // 12
     samples = [pygame.mixer.Sound(sample) for sample in files]
     octave = int(octaves / 2)
 
