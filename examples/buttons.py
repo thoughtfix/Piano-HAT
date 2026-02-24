@@ -16,7 +16,7 @@ Press CTRL+C to exit.
 pianohat.auto_leds(True)
 
 def handle_touch(ch, evt):
-    print(ch, evt)
+    print(ch, evt, flush=True)
 
 pianohat.on_note(handle_touch)
 pianohat.on_octave_up(handle_touch)
