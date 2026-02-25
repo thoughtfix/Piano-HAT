@@ -16,14 +16,31 @@ This library supports:
 - **Architecture:** Both 32-bit (armhf) and 64-bit (aarch64)
 - **Raspberry Pi Models:** All models with 40-pin GPIO header
 
-## What's New in v0.2.0
+## What's New in v0.3.1
 
-- ✨ **Python 3 only** - Dropped Python 2.7 support
-- 🏗️ **Modern packaging** - Uses `pyproject.toml` instead of `setup.py`
-- 🎯 **Type hints** - Added type annotations for better IDE support
-- 📦 **Simplified install** - New installer that won't break your system
-- 🔧 **64-bit support** - Works on modern 64-bit Raspberry Pi OS
-- 📝 **Better documentation** - Updated examples and clearer instructions
+- 🎯 **Fixed GPIO issues** - Replaced interrupt-based GPIO with polling to work on modern Bookworm
+- 📦 **Single dependency** - Now uses actively-maintained `adafruit-circuitpython-cap1188`
+- 💡 **LED control restored** - CAP1188 LED linking and manual control are supported
+- ✅ **Actually works** - Button detection finally works on Bookworm 64-bit systems
+- 🔧 **Simplified install** - No more GPIO configuration needed
+- 🧵 **Background polling** - Non-blocking button detection with proper debouncing
+
+## Version History
+
+**v0.3.1** (Latest):
+- Restored CAP1188 LED control (linking and manual on/off)
+- Lowered minimum CAP1188 dependency to match available PyPI versions
+
+**v0.3.0**:
+- Switched from cap1xxx to Adafruit CircuitPython library (fixing GPIO interrupt issues)
+- Button detection now works on modern Raspberry Pi OS Bookworm
+- Removed GPIO interrupt complexity, now uses polling
+- [Migration Guide: v0.2→v0.3](MIGRATION.md)
+
+**v0.2.0**:
+- Python 3 only (dropped Python 2.7 support)
+- Modern packaging with `pyproject.toml`
+- Type hints for IDE support
 
 ## Installing
 
@@ -59,7 +76,7 @@ source ~/pianohat-env/bin/activate
 
 The installer will:
 - Check your Python version (3.7+ required)
-- Install system dependencies (I2C tools, python3-smbus)
+- Install system dependencies (I2C tools)
 - Install the pianohat library
 - Optionally install examples and their dependencies
 
@@ -69,7 +86,7 @@ The installer will:
 
 ```bash
 sudo apt-get update
-sudo apt-get install python3-pip python3-dev i2c-tools python3-smbus
+sudo apt-get install python3-pip python3-dev i2c-tools
 ```
 
 #### Install Library:
@@ -109,6 +126,13 @@ dtparam=i2c_arm=on
 
 After enabling I2C, reboot your Raspberry Pi.
 
+### I2C Addresses
+
+Piano HAT uses two CAP1188 chips on the I2C bus:
+
+- `0x28` - keys C through G (indices 0-7)
+- `0x2b` - keys G# through C (indices 8-15)
+
 ## Running Examples
 
 The example scripts demonstrate Piano HAT's capabilities:
@@ -119,6 +143,8 @@ The example scripts demonstrate Piano HAT's capabilities:
 - **8bit-synth.py** - Software synthesis (requires audio device)
 - **midi-piano.py** - MIDI output (requires MIDI software)
 - **learn-to-play.py** - Interactive tutorial (requires audio device)
+
+**LED Control:** The LEDs are driven by the CAP1188 chips. Use `auto_leds(True)` to link LEDs to touches, or `auto_leds(False)` and `set_led()` for manual control.
 
 **Audio Requirements:** Examples that play sound require an audio output device. For headless setups, consider:
 - USB audio adapter

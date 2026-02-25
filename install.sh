@@ -35,6 +35,46 @@ check_venv() {
     if [ -n "$VIRTUAL_ENV" ]; then
         IN_VENV=1
         info "Running in virtual environment: $VIRTUAL_ENV"
+        
+        # Check if venv has --system-site-packages enabled
+        if [ ! -f "$VIRTUAL_ENV/pyvenv.cfg" ] || ! grep -q "include-system-site-packages = true" "$VIRTUAL_ENV/pyvenv.cfg" 2>/dev/null; then
+            warn "Virtual environment may not have --system-site-packages enabled"
+            echo ""
+            echo "Piano HAT requires access to system packages like python3-smbus."
+            echo "If you encounter 'No module named smbus' errors, recreate your venv with:"
+            echo "  deactivate"
+            echo "  rm -rf venv"
+            echo "  python3 -m venv --system-site-packages venv"
+            echo "  source venv/bin/activate"
+            echo ""
+            read -p "Continue anyway? [Y/n] " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Nn]$ ]]; then
+                echo "Installation cancelled."
+                exit 0
+            fi
+        fi
+    else
+        # Check if system is externally managed (PEP 668)
+        if [ -f /usr/lib/python*/EXTERNALLY-MANAGED ] 2>/dev/null || \
+           python3 -m pip install --dry-run pip 2>&1 | grep -q "externally-managed-environment"; then
+            warn "Modern Raspberry Pi OS uses externally-managed Python packages (PEP 668)"
+            echo ""
+            echo "It is STRONGLY RECOMMENDED to use a virtual environment."
+            echo ""
+            echo "Quick setup:"
+            echo "  python3 -m venv --system-site-packages venv"
+            echo "  source venv/bin/activate"
+            echo "  ./install.sh"
+            echo ""
+            read -p "Continue anyway WITHOUT virtual environment? [y/N] " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Installation cancelled. Please create a virtual environment first."
+                exit 0
+            fi
+            warn "Proceeding without virtual environment - installation may fail"
+        fi
     fi
 }
 
@@ -94,8 +134,32 @@ check_i2c() {
 # Install system dependencies
 install_dependencies() {
     if [ "$IN_VENV" -eq 1 ]; then
-        info "Running in venv, skipping system package installation"
-        info "Make sure system has: i2c-tools python3-smbus"
+        info "Running in venv, but some system packages are still required"
+        
+        # Even in a venv, we need system packages for I2C and building C extensions
+        if ! command -v apt-get &> /dev/null; then
+            error "apt-get not found, cannot install required system dependencies"
+            echo "Please manually install: python3-dev python3-smbus i2c-tools"
+            exit 1
+        fi
+        
+        info "Installing required system packages..."
+        sudo apt-get update -qq || {
+            warn "Failed to update package list"
+        }
+        
+        # These packages MUST be installed at system level
+        sudo apt-get install -y python3-dev python3-smbus i2c-tools || {
+            error "Failed to install required system packages (python3-dev python3-smbus i2c-tools)"
+            echo ""
+            echo "These packages are required for Piano HAT to work."
+            echo "Please install them manually with:"
+            echo "  sudo apt-get install python3-dev python3-smbus i2c-tools"
+            echo ""
+            exit 1
+        }
+        
+        info "System packages installed successfully"
         return 0
     fi
     
@@ -116,8 +180,7 @@ install_dependencies() {
         python3-pip \
         python3-dev \
         python3-setuptools \
-        i2c-tools \
-        python3-smbus || {
+        i2c-tools || {
             error "Failed to install system dependencies"
             exit 1
         }
@@ -215,6 +278,12 @@ main() {
     echo "  $PRODUCT_NAME Installer v$SCRIPT_VERSION"
     echo "========================================="
     echo ""
+    echo "Recommended setup (first time):"
+    echo "  1. sudo apt-get install python3-dev python3-smbus i2c-tools"
+    echo "  2. python3 -m venv --system-site-packages venv"
+    echo "  3. source venv/bin/activate"
+    echo "  4. ./install.sh"
+    echo ""
     
     # Parse arguments
     INSTALL_EXAMPLES="no"
@@ -234,9 +303,31 @@ main() {
                 # Auto-confirm
                 shift
                 ;;
+            -h|--help)
+                echo "Usage: $0 [OPTIONS]"
+                echo ""
+                echo "Options:"
+                echo "  --examples        Install example scripts and dependencies"
+                echo "  --skip-deps       Skip system dependency installation"
+                echo "  -y, --yes         Auto-confirm all prompts"
+                echo "  -h, --help        Show this help message"
+                echo ""
+                echo "Recommended installation:"
+                echo "  1. Install system packages:"
+                echo "     sudo apt-get install python3-dev python3-smbus i2c-tools"
+                echo ""
+                echo "  2. Create virtual environment:"
+                echo "     python3 -m venv --system-site-packages venv"
+                echo "     source venv/bin/activate"
+                echo ""
+                echo "  3. Run installer:"
+                echo "     ./install.sh --examples"
+                echo ""
+                exit 0
+                ;;
             *)
                 echo "Unknown option: $1"
-                echo "Usage: $0 [--examples] [--skip-deps] [-y]"
+                echo "Usage: $0 [--examples] [--skip-deps] [-y] [-h|--help]"
                 exit 1
                 ;;
         esac
@@ -266,6 +357,24 @@ main() {
     install_examples
     copy_examples
     test_i2c
+    
+    # Verify installation
+    info "Verifying installation..."
+    if python3 -c "import pianohat" 2>/dev/null; then
+        info "Installation verified successfully!"
+    else
+        error "Installation verification failed!"
+        echo ""
+        echo "The pianohat module could not be imported."
+        echo "This may indicate missing dependencies or system packages."
+        echo ""
+        echo "Please check the error messages above and ensure:"
+        echo "  - python3-smbus is installed: sudo apt-get install python3-smbus"
+        echo "  - python3-dev is installed: sudo apt-get install python3-dev"
+        echo "  - i2c-tools is installed: sudo apt-get install i2c-tools"
+        echo ""
+        exit 1
+    fi
     
     echo ""
     info "Installation complete!"

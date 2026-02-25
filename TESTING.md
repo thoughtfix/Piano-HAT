@@ -1,21 +1,27 @@
 # Installation Testing Checklist
 
-Use this checklist to verify the Piano HAT installation works correctly.
+Use this checklist to verify the Piano HAT installation works correctly on v0.3.x.
+
+**Key Changes in v0.3.x:**
+- Uses `adafruit-circuitpython-cap1188` (actively maintained CircuitPython library)
+- No longer requires GPIO interrupts (works on modern Bookworm)
+- `smbus` is no longer needed (Adafruit handles all dependencies)
 
 ## Pre-Installation Checks
 
 - [ ] Raspberry Pi model identified
-- [ ] Raspberry Pi OS version (run `cat /etc/os-release`)
+- [ ] Raspberry Pi OS Bullseye (11) or Bookworm (12)
+- [ ] Architecture noted (32-bit armhf or 64-bit aarch64)
 - [ ] Python version 3.7+ (run `python3 --version`)
 - [ ] I2C enabled (check `/boot/firmware/config.txt` or `/boot/config.txt`)
-- [ ] Piano HAT physically connected to GPIO pins
+- [ ] Piano HAT physically connected and I2C address visible (0x28, 0x2b)
 
 ## System Package Installation
 
 - [ ] `i2c-tools` installed (run `which i2cdetect`)
 - [ ] `python3-pip` installed (run `which pip3`)
 - [ ] `python3-dev` installed
-- [ ] `python3-smbus` installed (run `python3 -c "import smbus"` outside venv)
+- [ ] I2C bus visible with i2cdetect (run `i2cdetect -y 1`, should show 28 and 2b)
 
 ## Library Installation Tests
 
@@ -30,15 +36,15 @@ cd ~/piano-hat-test  # or wherever you cloned
 
 **Checklist:**
 - [ ] Virtual environment created successfully
-- [ ] Installer detected venv
+- [ ] Installer detected venv configuration
 - [ ] Skipped system package installation (expected in venv)
 - [ ] pip packages installed successfully
 - [ ] `pianohat` module importable
-- [ ] `cap1xxx` dependency installed
-- [ ] `smbus2` installed (or can access system `smbus`)
+- [ ] `adafruit-circuitpython-cap1188` dependency installed
+- [ ] `board` module accessible (Adafruit's I2C interface)
 - [ ] Examples copied to `~/pianohat-examples`
 
-### System-Wide Installation (Older OS)
+### System-Wide Installation (Not recommended on Bookworm due to PEP 668)
 
 ```bash
 ./install.sh --examples
@@ -47,7 +53,7 @@ cd ~/piano-hat-test  # or wherever you cloned
 **Checklist:**
 - [ ] System packages installed via apt
 - [ ] Python library installed via pip
-- [ ] No PEP 668 errors
+- [ ] No PEP 668 errors (if using Bookworm, venv recommended)
 - [ ] Examples copied
 
 ## Hardware Detection
@@ -70,7 +76,30 @@ python3 -c "import pianohat; print('Piano HAT v' + pianohat.__version__)"
 
 **Checklist:**
 - [ ] Import successful (no errors)
-- [ ] Version displays correctly (should be 0.2.0+)
+- [ ] Version displays correctly (should be 0.3.1+)
+
+## Button Detection Test (v0.3.x)
+
+**Important:** v0.3.x uses polling-based button detection (no GPIO interrupts). This is more reliable on modern systems.
+
+```bash
+# Test with driver_test.py (if available in repo)
+python3 driver_test.py
+```
+
+**Expected output:**
+```
+✓ CAP1188 at 0x28 detected
+✓ CAP1188 at 0x2b detected
+[timestamp] Button 0 (C) PRESSED
+[timestamp] Button 0 (C) RELEASED
+```
+
+**Checklist:**
+- [ ] Both CAP1188 chips detected
+- [ ] Button presses show timestamp and name
+- [ ] Debouncing working (no double-presses at 20ms interval)
+- [ ] All 16 buttons respond to touch
 
 ## Example Tests
 
@@ -127,7 +156,7 @@ python3 simple-piano.py
 **Solution:** Use a virtual environment (see above)
 
 ### "No module named 'smbus'" in venv
-**Solution:** `pip install smbus2` or use `--system-site-packages` when creating venv
+**Solution:** This is no longer needed in v0.3.0. If you see this, update the library: `pip install --upgrade pianohat`
 
 ### No I2C devices detected
 **Solution:** 
@@ -138,21 +167,38 @@ python3 simple-piano.py
 ### pygame errors on headless system
 **Solution:** This is expected. Use buttons.py or leds.py to test hardware.
 
-### "ImportError: cap1xxx"
-**Solution:** `pip install cap1xxx`
+### "ImportError: adafruit_circuitpython_cap1188"
+**Solution:** `pip install adafruit-circuitpython-cap1188`
+
+### Buttons not responding
+**Solution (v0.3.x):**
+- The new polling system requires 20ms per check cycle
+- Touch a button distinctly (hold for 50ms+)
+- Test with driver_test.py to verify hardware communication
+- Check I2C is enabled and working
 
 ## Success Criteria
 
-Minimum for successful install:
+**Minimum for successful install (v0.3.x):**
 - ✅ Library imports without errors
-- ✅ I2C devices detected
+- ✅ I2C devices detected (i2cdetect shows 0x28 and 0x2b)
+- ✅ Both CAP1188 chips detected and working
 - ✅ buttons.py works (detects key presses)
-- ✅ leds.py works (controls LEDs)
+- ✅ Adafruit CircuitPython library installed correctly
 
-Full success:
+**Full success:**
 - ✅ All of the above
+- ✅ driver_test.py shows debounced button presses
+- ✅ leds.py works (controls LEDs - should run without errors)
 - ✅ simple-piano.py plays sounds (if audio available)
-- ✅ Examples run without errors
+- ✅ All 16 buttons respond to touch
+- ✅ Octave and Instrument buttons work
+
+**Key Changes in v0.3.x:**
+- ✅ GPIO interrupts are no longer used (polling instead)
+- ✅ Works on modern Bookworm 64-bit systems
+- ✅ No GPIO pin conflicts
+- ✅ More reliable button detection
 
 ## Report Template
 
